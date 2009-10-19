@@ -1,0 +1,71 @@
+# $Id: Portfile 58709 2009-10-03 04:57:22Z jmr@macports.org $
+
+PortSystem      1.0
+
+name            tk
+version         8.5.7
+categories      x11
+maintainers     mww openmaintainer
+description     Tcl Tool Kit
+homepage        http://www.tcl.tk/
+long_description \
+  This is Tk version ${version}, a GUI toolkit for Tcl. The best way to get \
+  started with Tcl is to read ``Tcl and the Tk Toolkit'' by John K.         \
+  Ousterhout, Addison-Wesley, ISBN 0-201-63337-X.
+
+platforms       darwin
+master_sites    http://cloud.github.com/downloads/das/tcltk\
+                sourceforge:tcl
+dist_subdir     tcltk
+distname        ${name}${version}-decarbon
+worksrcdir      ${name}${version}/unix
+checksums \
+  ${distname}${extract.suffix} \
+    md5     d9891a9c4af7360326ecafa925483e81 \
+    sha1    63de0cff1fb3de1c09130e76fe469abb485c12b7 \
+    rmd160  af8b6e0c6577d2015043862c27172682ba473f19 \
+# suck in Tcl as well so we can use it internally.
+distfiles-append    tcl${version}-src${extract.suffix}
+checksums-append \
+  tcl${version}-src${extract.suffix} \
+    md5     f70ad8f78b5e4a9f792fe101f22b125f \
+    sha1    a603d27bf0b854739c99f0d658bfc3f1c485f578 \
+    rmd160  1bb843548c05332eb3404b99b4800613f25a9dbf
+
+depends_build   port:pkgconfig
+
+# force usage of MacPorts Tcl
+depends_lib \
+	port:tcl \
+	port:Xft2 \
+	port:xorg-libXScrnSaver
+
+post-patch {
+    reinplace s|@TCL_SRC_DIR@|${worksrcpath}/../../tcl${version}/|g ${worksrcpath}/Makefile.in
+}
+
+configure.args      --mandir=${prefix}/share/man --with-tcl=${prefix}/lib
+configure.cppflags  -I${workpath}/tcl${version}/generic
+configure.ldflags   -L${worksrcpath} -L${prefix}/lib
+
+destroot.destdir    INSTALL_ROOT=${destroot}
+post-destroot {
+    ln -s wish8.5 ${destroot}${prefix}/bin/wish
+    ln -s libtk8.5.dylib ${destroot}${prefix}/lib/libtk.dylib
+}
+
+variant quartz description {Use native Mac OS X UI instead of X11} {
+    depends_lib-delete port:Xft2 port:xorg-libXScrnSaver
+    configure.args-append   --enable-aqua
+    post-destroot {
+        delete ${destroot}${prefix}/include/X11
+    }
+}
+
+platform darwin {
+    configure.args-append   tcl_cv_type_64bit="long long"
+}
+
+livecheck.type	freshmeat
+livecheck.name	tcltk
+livecheck.regex "(?i)<title>tcl/tk (\\d+(?:\\.\\d+)*)</title>"

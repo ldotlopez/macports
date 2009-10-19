@@ -1,0 +1,149 @@
+# $Id: Portfile 58104 2009-09-22 06:58:34Z ryandesign@macports.org $
+
+PortSystem              1.0
+PortGroup               muniversal 1.0
+
+name                    pango
+conflicts               pango-devel
+version                 1.26.0
+set branch              [join [lrange [split ${version} .] 0 1] .]
+categories              x11
+maintainers             ryandesign
+license                 LGPLv2
+homepage                http://www.pango.org/
+master_sites            gnome:sources/pango/${branch}
+platforms               darwin
+use_bzip2               yes
+use_parallel_build      yes
+
+description \
+    Framework for the layout and rendering of i18n text
+
+long_description \
+    The goal of the Pango project is to provide an \
+    open-source framework for the layout and rendering \
+    of internationalized text.
+
+checksums           md5     74ce18cfcc3ad0008a6ad56cfc535061 \
+                    sha1    567f9ace5a8384b3a59dbf95304dc8b1a271d5b6 \
+                    rmd160  b3b64d6af1eb9cc27d23a7e58d118df8fed25502
+
+depends_extract \
+    port:pkgconfig
+
+depends_lib \
+    path:lib/pkgconfig/glib-2.0.pc:glib2 \
+    port:Xft2 \
+    path:lib/pkgconfig/cairo.pc:cairo
+
+configure.ccache        no
+
+# Do not call gzip on man files as it interferes with the universal merger process.
+post-patch {
+    reinplace "s|\$(MAKE) \$(AM_MAKEFLAGS) install-data-hook||" ${worksrcpath}/pango-view/Makefile.in
+}
+
+platform macosx {}
+variant quartz requires macosx description {Add Quartz graphics interface} {
+    # Although this variant does nothing, pango will automatically build
+    # itself differently depending on whether or not cairo is installed with
+    # the quartz variant. Therefore this variant is necessary to be able to
+    # distinguish whether an installed pango has quartz support or not.
+}
+
+pre-extract {
+    set glib_minimum_version 2.17.3
+    set glib_installed_version [exec pkg-config glib-2.0 --modversion]
+    if {[rpm-vercomp ${glib_installed_version} ${glib_minimum_version}] < 0} {
+        ui_error "${name} ${version} requires glib2 ${glib_minimum_version} or later but you have glib2 ${glib_installed_version}."
+        return -code error "incompatible glib2 version"
+    }
+    
+    set cairo_minimum_version 1.7.4
+    set cairo_installed_version [exec pkg-config cairo --modversion]
+    if {[rpm-vercomp ${cairo_installed_version} ${cairo_minimum_version}] < 0} {
+        ui_error "${name} ${version} requires cairo ${cairo_minimum_version} or later but you have cairo ${cairo_installed_version}."
+        return -code error "incompatible cairo version"
+    }
+    
+    set cairo_quartz_pc ${prefix}/lib/pkgconfig/cairo-quartz.pc
+    if {[variant_isset quartz]} {
+        if {![file exists ${cairo_quartz_pc}]} {
+            ui_error "To install pango with the quartz variant, cairo must be installed with the quartz variant."
+            return -code error "incompatible cairo installation"
+        }
+    } else {
+        if {[file exists ${cairo_quartz_pc}]} {
+            ui_error "To install pango without the quartz variant, cairo must be installed without the quartz variant."
+            return -code error "incompatible cairo installation"
+        }
+    }
+    
+    set cairo_xlib_pc ${prefix}/lib/pkgconfig/cairo-xlib.pc
+    if {[variant_isset no_x11]} {
+        if {[file exists ${cairo_xlib_pc}]} {
+            ui_error "To install pango with the no_x11 variant, cairo must be installed with the no_x11 variant."
+            return -code error "incompatible cairo installation"
+        }
+    } else {
+        if {![file exists ${cairo_xlib_pc}]} {
+            ui_error "To install pango without the no_x11 variant, cairo must be installed without the no_x11 variant."
+            return -code error "incompatible cairo installation"
+        }
+    }
+}
+
+if { ${os.arch}=="i386" } {
+    set merger_configure_env(ppc)     "NM='/usr/bin/nm -p'"
+    set merger_configure_env(ppc64)   "NM='/usr/bin/nm -p'"
+} else {
+    set merger_configure_env(i386)    "NM='/usr/bin/nm -p'"
+    set merger_configure_env(x86_64)  "NM='/usr/bin/nm -p'"
+}
+lappend merger_configure_env(ppc64)   ac_cv_header_Carbon_Carbon_h=no
+lappend merger_configure_env(x86_64)  ac_cv_header_Carbon_Carbon_h=no
+
+configure.cppflags-append \
+    -no-cpp-precomp
+
+configure.ldflags-append \
+    -no-undefined \
+    -bind_at_load
+
+configure.args \
+    --enable-static \
+    --x-include=${prefix}/include --x-lib=${prefix}/lib
+
+variant no_x11 {
+    depends_lib-delete \
+        port:Xft2
+    configure.args-append \
+        --without-x
+}
+
+post-destroot {
+    if {[variant_isset no_x11]} {
+        xinstall -d ${destroot}${prefix}/etc/pango
+    }
+    xinstall -m 0644 ${worksrcpath}/modules/pangorc \
+        ${destroot}${prefix}/etc/pango
+    reinplace "s|\\.\\./modules/|${prefix}/etc/pango/|g" \
+        ${destroot}${prefix}/etc/pango/pangorc
+    
+    system "env LANG=C DYLD_LIBRARY_PATH=${destroot}${prefix}/lib \
+        ${destroot}${prefix}/bin/pango-querymodules ${destroot}${prefix}/lib/pango/1.6.0/modules/*.so \
+        >${destroot}${prefix}/etc/pango/pango.modules"
+    reinplace s|${destroot}||g ${destroot}${prefix}/etc/pango/pango.modules
+    
+    set docdir ${prefix}/share/doc/${name}-${version}
+    xinstall -d ${destroot}${docdir}
+    xinstall -m 0644 -W ${worksrcpath} AUTHORS ChangeLog COPYING MAINTAINERS NEWS README THANKS \
+        ${destroot}${docdir}
+}
+
+test.run                yes
+test.target             check
+
+livecheck.type          regex
+livecheck.url           http://ftp.gnome.org/pub/GNOME/sources/${name}/${branch}/?C=M&O=D
+livecheck.regex         ${name}-(\[0-9.\]+)\\.tar

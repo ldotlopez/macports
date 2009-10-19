@@ -1,29 +1,39 @@
 # -*- coding: utf-8; mode: tcl; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*- vim:fenc=utf-8:filetype=tcl:et:sw=4:ts=4:sts=4
-# $Id: Portfile 37026 2008-05-23 11:17:25Z ryandesign@macports.org $
+# $Id: Portfile 54906 2009-08-04 11:20:39Z snc@macports.org $
 
-PortSystem          1.0
+PortSystem      1.0
 
-name                clutter-gtk
-version             0.8.3
-set branch          [string range $version 0 [expr [string last "." $version] - 1]]
-categories          graphics
-maintainers         cuarentaydos.com:xuzo
-platforms           darwin
-description         A generic high-level canvas library.
-long_description    Clutter is an open source software library for \
-                    creating fast, visually rich and animated graphical \
-                    user interfaces.
-homepage            http://www.clutter-project.org/
-master_sites        http://www.clutter-project.org/sources/clutter-gtk/${branch}/
-use_bzip2           yes
+name            clutter-gtk
+version         0.10.2
+set branch      [string range $version 0 [expr [string last "." $version] - 1]]
+categories      graphics
+description     Clutter GTK integration library.
+long_description Clutter-GTK is a library providing facilities to \
+                 integrate Clutter into GTK+ applications. It provides \
+                 a GTK+ widget, GtkClutterEmbed, for embedding the \
+                 default ClutterStage into any GtkContainer.
+maintainers     nodamage.com:nodamage
+platforms       darwin
+homepage        http://www.clutter-project.org/
+master_sites    http://www.clutter-project.org/sources/${name}/${branch}/
 
-checksums           md5 0b924a2a5a8dbd83ad3762fada7c7eaf
+checksums       md5     1203dbf7091bbde0ca36053a95d9d18d \
+                sha1    55db953a4059ee611f1915018da0862e5036f242 \
+                rmd160  d3ccd9460f0083a12d03aa401d5526f75b2eb3c1
 
-depends_build       port:pkgconfig
+depends_build \
+    port:pkgconfig \
 
-depends_lib         port:cluter \
-                    port:gtk2
+depends_lib \
+    port:gtk2 \
+    port:clutter
+ 
+configure.env \
+	CFLAGS="-D_REENTRANT -I${prefix}/include/clutter-1.0 -I${prefix}/include/cairo -I${prefix}/include/pango-1.0 -I${prefix}/include/pixman-1 -I${prefix}/include/freetype2 -I${prefix}/include -I${prefix}/include/libpng12 -I${prefix}/include/glib-2.0 -I${prefix}/lib/glib-2.0/include -I${prefix}/include/gtk-2.0 -I${prefix}/lib/gtk-2.0/include -I${prefix}/include/atk-1.0" \
+	LIBS="-framework Cocoa -L/opt/local/lib -lgtk-quartz-2.0 -lgdk-quartz-2.0 -latk-1.0 -lgdk_pixbuf-2.0 -lgio-2.0 -lclutter-osx-1.0 -lpangocairo-1.0 -lgthread-2.0 -lcairo -lpangoft2-1.0 -lpixman-1 -lpng12 -lpango-1.0 -lm -lfontconfig -lexpat -lfreetype -lz -lgobject-2.0 -lgmodule-2.0 -lglib-2.0 -lintl -liconv"
 
-configure.args      --with-flavour=osx \
-                    --disable-docs \
-                    --disable-gtk-doc
+build.env \
+	CFLAGS="-D_REENTRANT -I${prefix}/include/clutter-1.0 -I${prefix}/include/cairo -I${prefix}/include/pango-1.0 -I${prefix}/include/pixman-1 -I${prefix}/include/freetype2 -I${prefix}/include -I${prefix}/include/libpng12 -I${prefix}/include/glib-2.0 -I${prefix}/lib/glib-2.0/include -I${prefix}/include/gtk-2.0 -I${prefix}/lib/gtk-2.0/include -I${prefix}/include/atk-1.0" \
+	LIBS="-framework Cocoa -L/opt/local/lib -lgtk-quartz-2.0 -lgdk-quartz-2.0 -latk-1.0 -lgdk_pixbuf-2.0 -lgio-2.0 -lclutter-osx-1.0 -lpangocairo-1.0 -lgthread-2.0 -lcairo -lpangoft2-1.0 -lpixman-1 -lpng12 -lpango-1.0 -lm -lfontconfig -lexpat -lfreetype -lz -lgobject-2.0 -lgmodule-2.0 -lglib-2.0 -lintl -liconv"
+
+configure.args  --with-flavour=osx
